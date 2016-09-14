@@ -7,20 +7,22 @@
 
 gulp.task("format", [js.format]);
 
+gulp.task("copy", () => gulp.src(["node_modules/primrose/Primrose.js", "node_modules/primrose/Primrose.min.js"])
+  .pipe(gulp.dest("./")));
+
 gulp.task("default", [
+  "copy",
   js.default,
   html.default,
   css.default
 ]);
 
 gulp.task("debug", [
+  "copy",
   js.build,
   html.debug,
   css.build
 ]);
-
-gulp.task("copy", () => gulp.src(["node_modules/primrose/Primrose.js", "node_modules/primrose/Primrose.min.js"])
-  .pipe(gulp.dest("./")));
 
 gulp.task("release", [
   "copy",

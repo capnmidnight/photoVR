@@ -93,4 +93,4 @@ function select(evt) {
 })();
     // end D:\Documents\VR\photoVR\src\app.js
     ////////////////////////////////////////////////////////////////////////////////
-console.info("photovr v1.0.2. see https://github.com/NotionTheory/photoVR#readme for more information.");
+console.info("photovr v1.0.3. see https://github.com/NotionTheory/photoVR#readme for more information.");
