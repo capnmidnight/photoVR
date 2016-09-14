@@ -64357,7 +64357,7 @@ function light(color, intensity, distance, decay) {
 (function(){"use strict";
 
 function material(textureDescription, options) {
-  var materialDescription = "Primrose.material(" + textureDescription + ", " + options.unshaded + ", " + options.opacity + ", " + options.roughness + ", " + options.metalness + ", " + options.wireframe + ", " + options.emissive + ", " + options.wireframe + ")";
+  var materialDescription = "Primrose.material(" + textureDescription + ", " + options.unshaded + ", " + options.side + ", " + options.opacity + ", " + options.roughness + ", " + options.metalness + ", " + options.color + ", " + options.emissive + ", " + options.wireframe + ")";
   return cache(materialDescription, function () {
     var materialOptions = {
       transparent: options.opacity < 1,
@@ -71429,6 +71429,7 @@ var Image = function (_Primrose$Entity) {
     _this._images = [];
     _this._currentImageIndex = 0;
     _this.meshes = null;
+    _this.isVideo = false;
     return _this;
   }
 
@@ -71452,14 +71453,16 @@ var Image = function (_Primrose$Entity) {
     }
   }, {
     key: "loadImages",
-    value: function loadImages(images) {
+    value: function loadImages(images, progress) {
       var _this3 = this;
 
       return Promise.all(images.map(function (src, i) {
-        return Primrose.loadTexture(src).then(function (txt) {
+        return Primrose.loadTexture(src, progress).then(function (txt) {
           return _this3._images[i] = txt;
         });
       })).then(function () {
+        return _this3.isVideo = false;
+      }).then(function () {
         return _this3;
       });
     }
@@ -71485,27 +71488,31 @@ var Image = function (_Primrose$Entity) {
           document.body.insertBefore(video, document.body.children[0]);
         });
       })).then(function () {
+        return _this4.isVideo = true;
+      }).then(function () {
         return _this4;
       });
     }
   }, {
     key: "eyeBlank",
     value: function eyeBlank(eye) {
-      this._currentImageIndex = eye % this.meshes.length;
-      for (var i = 0; i < this.meshes.length; ++i) {
-        var m = this.meshes[i];
-        m.visible = i === this._currentImageIndex;
-        if (i > 0) {
-          m.position.copy(this.position);
-          m.quaternion.copy(this.quaternion);
-          m.scale.copy(this.scale);
+      if (this.meshes) {
+        this._currentImageIndex = eye % this.meshes.length;
+        for (var i = 0; i < this.meshes.length; ++i) {
+          var m = this.meshes[i];
+          m.visible = i === this._currentImageIndex;
+          if (i > 0) {
+            m.position.copy(this.position);
+            m.quaternion.copy(this.quaternion);
+            m.scale.copy(this.scale);
+          }
         }
       }
     }
   }, {
     key: "update",
     value: function update() {
-      if (this.meshes) {
+      if (this.meshes && this.isVideo) {
         for (var i = 0; i < this.meshes.length; ++i) {
           this.meshes[i].material.map.needsUpdate = true;
         }
@@ -71533,6 +71540,114 @@ var Image = function (_Primrose$Entity) {
     if(typeof window !== "undefined") window.Primrose.Controls.Image = Image;
 })();
     // end D:\Documents\VR\Primrose\src\Primrose\Controls\Image.js
+    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+    // start D:\Documents\VR\Primrose\src\Primrose\Controls\Progress.js
+(function(){"use strict";
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var SIZE = 1,
+    INSET = 0.8,
+    PROPORTION = 10,
+    SIZE_SMALL = SIZE / PROPORTION,
+    INSET_LARGE = 1 - (1 - INSET) / PROPORTION;
+
+var Progress = function () {
+  function Progress(majorColor, minorColor) {
+    _classCallCheck(this, Progress);
+
+    majorColor = majorColor || 0xffffff;
+    minorColor = minorColor || 0x000000;
+    var geom = box(SIZE, SIZE_SMALL, SIZE_SMALL);
+
+    this.totalBar = colored(geom, minorColor, {
+      unshaded: true,
+      side: THREE.BackSide
+    });
+
+    this.valueBar = colored(geom, majorColor, {
+      unshaded: true
+    });
+    this.valueBar.scale.set(0, INSET, INSET);
+
+    this.totalBar.add(this.valueBar);
+
+    this.fileState = null;
+    this.reset();
+  }
+
+  _createClass(Progress, [{
+    key: "addToBrowserEnvironment",
+    value: function addToBrowserEnvironment(env, scene) {
+      scene.add(this.totalBar);
+    }
+  }, {
+    key: "reset",
+    value: function reset() {
+      this.fileState = {};
+      this.value = 0;
+    }
+  }, {
+    key: "onProgress",
+    value: function onProgress(evt) {
+      var file = evt.target.responseURL;
+      if (!this.fileState[file]) {
+        this.fileState[file] = {};
+      }
+      var f = this.fileState[file];
+      f.loaded = evt.loaded;
+      f.total = evt.total;
+
+      var total = 0,
+          loaded = 0;
+      for (var key in this.fileState) {
+        var _f = this.fileState[key];
+        total += _f.total;
+        loaded += _f.loaded;
+      }
+
+      if (total > 0) {
+        this.value = loaded / total;
+      } else {
+        this.value = 0;
+      }
+    }
+  }, {
+    key: "visible",
+    get: function get() {
+      return this.totalBar.visible;
+    },
+    set: function set(v) {
+      this.totalBar.visible = v;
+    }
+  }, {
+    key: "position",
+    get: function get() {
+      return this.totalBar.position;
+    }
+  }, {
+    key: "quaternion",
+    get: function get() {
+      return this.totalBar.quaternion;
+    }
+  }, {
+    key: "value",
+    get: function get() {
+      return this.valueBar.scale.x;
+    },
+    set: function set(v) {
+      this.valueBar.scale.x = v * INSET_LARGE;
+    }
+  }]);
+
+  return Progress;
+}();
+    if(typeof window !== "undefined") window.Primrose.Controls.Progress = Progress;
+})();
+    // end D:\Documents\VR\Primrose\src\Primrose\Controls\Progress.js
     ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
     // start D:\Documents\VR\Primrose\src\Primrose\Controls\VUMeter.js
@@ -78513,4 +78628,4 @@ function toString(digits) {
 })();
     // end D:\Documents\VR\Primrose\src\THREE\Vector3\prototype\toString.js
     ////////////////////////////////////////////////////////////////////////////////
-console.info("primrose v0.26.20. see https://www.primrosevr.com for more information.");
+console.info("primrose v0.26.21. see https://www.primrosevr.com for more information.");
