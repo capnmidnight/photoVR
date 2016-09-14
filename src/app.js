@@ -83,12 +83,10 @@ function select(evt){
   const obj = evt.hit && evt.hit.object;
   if(obj){
     if(obj === home){
-      // Back to the origin.
-      app.input.moveStage({x: 0, y: 0, z: 0});
+      app.teleport({x: 0, y: 0, z: 0});
     }
     else{
-      // Or to the center of a photosphere.
-      app.input.moveStage(obj.position);
+      app.teleport(obj.position);
     }
   }
 }
