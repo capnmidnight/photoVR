@@ -19,7 +19,11 @@ gulp.task("debug", [
   css.build
 ]);
 
+gulp.task("copy", () => gulp.src(["node_modules/primrose/Primrose.js", "node_modules/primrose/Primrose.min.js"])
+  .pipe(gulp.dest("./")));
+
 gulp.task("release", [
+  "copy",
   js.build,
   html.release,
   css.build
