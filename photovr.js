@@ -42,31 +42,16 @@ app.addEventListener("ready", function () {
   // Put the home teleporter into the scene and make it clickable.
   app.appendChild(home);
 
+  var progress = new Primrose.Controls.Progress();
+  app.appendChild(progress);
+  progress.position.set(0, app.avatarHeight, -1);
+
   // Add the photospheres.
-  Promise.all(images.map(function (room, i) {
-    var imgs = [room],
-
-
-    // Look for the word `left` in the image file name to determine if the file
-    // is a stereo image file.
-    pattern = /(\b|_)left\b/,
-        match = room.match(pattern);
-
-    if (match) {
-      // Assume the complement to the left image is named exactly the same, with
-      // the word "right" in place of "left".
-      imgs.push(room.replace(pattern, "$1right"));
-    }
-
-    // Create the object that will hold the image.
+  Promise.all(images.map(function (img) {
     return new Primrose.Controls.Image({
       radius: 2,
       unshaded: true
-    })
-    // and load the images for that object.
-    .loadImages(imgs.map(function (img) {
-      return "images/" + img + ".jpg";
-    }));
+    }).loadImages(["images/" + img + ".jpg"], progress.onProgress.bind(progress));
   })).then(function (surfaces) {
     return surfaces.forEach(function (img, i) {
       // Place the photospheres in the scene.
@@ -74,8 +59,10 @@ app.addEventListener("ready", function () {
 
       // Position them equidistantly along a circle.
       var a = i * (2 * Math.PI / images.length);
-      img.position.set(POSITIONING_RADIUS * Math.cos(a), app.options.avatarHeight, POSITIONING_RADIUS * Math.sin(a));
+      img.position.set(POSITIONING_RADIUS * Math.cos(a), app.avatarHeight, POSITIONING_RADIUS * Math.sin(a));
     });
+  }).then(function () {
+    return progress.visible = false;
   });
 });
 

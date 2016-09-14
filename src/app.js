@@ -46,30 +46,16 @@ app.addEventListener("ready", () => {
   // Put the home teleporter into the scene and make it clickable.
   app.appendChild(home);
 
+  const progress = new Primrose.Controls.Progress();
+  app.appendChild(progress);
+  progress.position.set(0, app.avatarHeight, -1);
+
   // Add the photospheres.
-  Promise.all(images.map((room, i) => {
-    const imgs = [room],
-
-      // Look for the word `left` in the image file name to determine if the file
-      // is a stereo image file.
-      pattern = /(\b|_)left\b/,
-      match = room.match(pattern);
-
-    if(match) {
-      // Assume the complement to the left image is named exactly the same, with
-      // the word "right" in place of "left".
-      imgs.push(room.replace(pattern, "$1right"));
-    }
-
-    // Create the object that will hold the image.
-    return new Primrose.Controls.Image({
+  Promise.all(images.map((img) => new Primrose.Controls.Image({
       radius: 2,
       unshaded: true
-    })
-    // and load the images for that object.
-    .loadImages(imgs.map((img) => "images/" + img + ".jpg"));
-
-  })).then((surfaces) => surfaces.forEach((img, i) => {
+    }).loadImages(["images/" + img + ".jpg"], progress.onProgress.bind(progress))))
+  .then((surfaces) => surfaces.forEach((img, i) => {
     // Place the photospheres in the scene.
     app.appendChild(img);
 
@@ -77,9 +63,9 @@ app.addEventListener("ready", () => {
     const a = i * (2 * Math.PI / images.length);
     img.position.set(
       POSITIONING_RADIUS * Math.cos(a),
-      app.options.avatarHeight,
+      app.avatarHeight,
       POSITIONING_RADIUS * Math.sin(a));
-  }));
+  })).then(() => progress.visible = false);
 });
 
 app.addEventListener("update", function(dt){
