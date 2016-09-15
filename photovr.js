@@ -27,7 +27,7 @@ var app = new Primrose.BrowserEnvironment({
 });
 
 // The hook on which we teleport the user back to center.
-var home = colored(cylinder(0.1, 0.1, 0.1, 36, 36), 0xffff00, {
+var home = colored(box(0.1, 0.1, 0.1), 0xffff00, {
   unshaded: true
 });
 home.name = "home";
