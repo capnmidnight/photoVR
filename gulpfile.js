@@ -7,7 +7,7 @@
 
 gulp.task("format", [js.format]);
 
-gulp.task("copy", () => gulp.src(["node_modules/primrose/Primrose.js", "node_modules/primrose/Primrose.min.js"])
+gulp.task("copy", () => gulp.src(["../Primrose/Primrose.js", "../Primrose/Primrose.min.js"])
   .pipe(gulp.dest("./")));
 
 gulp.task("default", [

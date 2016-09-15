@@ -71490,7 +71490,7 @@ var Image = function (_Primrose$Entity) {
     }
   }, {
     key: "loadVideos",
-    value: function loadVideos(videos) {
+    value: function loadVideos(videos, progress) {
       var _this4 = this;
 
       return Promise.all(videos.map(function (src, i) {
@@ -71503,8 +71503,10 @@ var Image = function (_Primrose$Entity) {
           video.loop = true;
           video.oncanplay = function () {
             _this4._images[i] = video;
+            console.log(video.videoWidth, video.videoHeight);
             resolve();
           };
+          video.onprogress = progress;
           video.onerror = reject;
           video.src = src;
           document.body.insertBefore(video, document.body.children[0]);
@@ -71615,13 +71617,15 @@ var Progress = function () {
   }, {
     key: "onProgress",
     value: function onProgress(evt) {
-      var file = evt.target.responseURL;
-      if (!this.fileState[file]) {
-        this.fileState[file] = {};
+      var file = evt.target.responseURL || evt.target.currentSrc;
+      if (file && evt.loaded !== undefined) {
+        if (!this.fileState[file]) {
+          this.fileState[file] = {};
+        }
+        var f = this.fileState[file];
+        f.loaded = evt.loaded;
+        f.total = evt.total;
       }
-      var f = this.fileState[file];
-      f.loaded = evt.loaded;
-      f.total = evt.total;
 
       var total = 0,
           loaded = 0;
@@ -71662,6 +71666,7 @@ var Progress = function () {
     },
     set: function set(v) {
       this.valueBar.scale.x = v * INSET_LARGE;
+      this.valueBar.position.x = -SIZE * (1 - v) * INSET_LARGE / 2;
     }
   }]);
 
@@ -78650,4 +78655,4 @@ function toString(digits) {
 })();
     // end D:\Documents\VR\Primrose\src\THREE\Vector3\prototype\toString.js
     ////////////////////////////////////////////////////////////////////////////////
-console.info("primrose v0.26.23. see https://www.primrosevr.com for more information.");
+console.info("primrose v0.26.24. see https://www.primrosevr.com for more information.");
