@@ -63882,9 +63882,11 @@ var cache = function () {
     // start D:\Documents\VR\Primrose\src\circle.js
 (function(){"use strict";
 
-function circle(r, sections) {
-  return cache("CircleBufferGeometry(" + r + ", " + sections + ")", function () {
-    return new THREE.CircleBufferGeometry(r, sections);
+function circle(r, sections, start, end) {
+  r = r || 1;
+  sections = sections || 18;
+  return cache("CircleBufferGeometry(" + r + ", " + sections + ", " + start + ", " + end + ")", function () {
+    return new THREE.CircleBufferGeometry(r, sections, start, end);
   });
 }
     if(typeof window !== "undefined") window.circle = circle;
@@ -63941,6 +63943,7 @@ function colored(geometry, color, options) {
 
   options.unshaded = !!options.unshaded;
   options.wireframe = !!options.wireframe;
+  options.color = color;
 
   var mat = material("", options),
       obj = null;
@@ -63950,10 +63953,6 @@ function colored(geometry, color, options) {
   } else if (geometry instanceof THREE.Object3D) {
     obj = geometry;
     obj.material = mat;
-  }
-
-  if (typeof color === "number" || color instanceof Number) {
-    mat.color.set(color);
   }
 
   return obj;
@@ -64011,8 +64010,8 @@ function cylinder(rT, rB, height, rS, hS, openEnded, thetaStart, thetaEnd) {
   if (height === undefined) {
     height = 1;
   }
-  return cache("CylinderGeometry(" + rT + ", " + rB + ", " + height + ", " + rS + ", " + hS + ", " + openEnded + ", " + thetaStart + ", " + thetaEnd + ")", function () {
-    return new THREE.CylinderGeometry(rT, rB, height, rS, hS, openEnded, thetaStart, thetaEnd);
+  return cache("CylinderBufferGeometry(" + rT + ", " + rB + ", " + height + ", " + rS + ", " + hS + ", " + openEnded + ", " + thetaStart + ", " + thetaEnd + ")", function () {
+    return new THREE.CylinderBufferGeometry(rT, rB, height, rS, hS, openEnded, thetaStart, thetaEnd);
   });
 }
     if(typeof window !== "undefined") window.cylinder = cylinder;
@@ -64357,7 +64356,7 @@ function light(color, intensity, distance, decay) {
 (function(){"use strict";
 
 function material(textureDescription, options) {
-  var materialDescription = "Primrose.material(" + textureDescription + ", " + options.unshaded + ", " + options.side + ", " + options.opacity + ", " + options.roughness + ", " + options.metalness + ", " + options.color + ", " + options.emissive + ", " + options.wireframe + ")";
+  var materialDescription = "Primrose.material(" + textureDescription + ", " + options.color + ", " + options.unshaded + ", " + options.side + ", " + options.opacity + ", " + options.roughness + ", " + options.metalness + ", " + options.color + ", " + options.emissive + ", " + options.wireframe + ")";
   return cache(materialDescription, function () {
     var materialOptions = {
       transparent: options.opacity < 1,
@@ -64378,6 +64377,9 @@ function material(textureDescription, options) {
       }
     }
     var mat = new MaterialType(materialOptions);
+    if (typeof options.color === "number" || options.color instanceof Number) {
+      mat.color.set(options.color);
+    }
     mat.wireframe = options.wireframe;
     return mat;
   });
@@ -64697,6 +64699,9 @@ function textured(geometry, txt, options) {
   if (options.metalness === undefined) {
     options.metalness = 0;
   }
+  if (options.color === undefined) {
+    options.color = 0xffffff;
+  }
 
   options.unshaded = !!options.unshaded;
   options.wireframe = !!options.wireframe;
@@ -64720,11 +64725,7 @@ function textured(geometry, txt, options) {
     obj.material = mat;
   }
 
-  if (typeof txt === "number" || txt instanceof Number) {
-    mat.color.set(txt);
-  } else if (txt) {
-    mat.color.set(0xffffff);
-
+  if (txt) {
     var setTexture = function setTexture(texture) {
       if (options.txtRepeatS * options.txtRepeatT > 1) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -65444,7 +65445,7 @@ var BrowserEnvironment = function (_Primrose$AbstractEve) {
       if (models.button) {
         _this.buttonFactory = new Primrose.ButtonFactory(models.button, _this.options.button.options);
       } else {
-        _this.buttonFactory = new Primrose.ButtonFactory(brick(0xff0000, 1, 1, 1), {
+        _this.buttonFactory = new Primrose.ButtonFactory(colored(box(1, 1, 1), 0xff0000), {
           maxThrow: 0.1,
           minDeflection: 10,
           colorUnpressed: 0x7f0000,
@@ -65455,7 +65456,7 @@ var BrowserEnvironment = function (_Primrose$AbstractEve) {
     }).catch(function (err) {
       console.error(err);
       if (!_this.buttonFactory) {
-        _this.buttonFactory = new Primrose.ButtonFactory(brick(0xff0000, 1, 1, 1), {
+        _this.buttonFactory = new Primrose.ButtonFactory(colored(box(1, 1, 1), 0xff0000), {
           maxThrow: 0.1,
           minDeflection: 10,
           colorUnpressed: 0x7f0000,
@@ -71434,7 +71435,11 @@ var Image = function (_Primrose$Entity) {
       options.geometry = quad(0.5, 0.5);
     }
 
-    var _this = _possibleConstructorReturn(this, (Image.__proto__ || Object.getPrototypeOf(Image)).call(this, "Primrose.Controls.Image[" + COUNTER++ + "]"));
+    if (!options.id) {
+      options.id = "Primrose.Controls.Image[" + COUNTER++ + "]";
+    }
+
+    var _this = _possibleConstructorReturn(this, (Image.__proto__ || Object.getPrototypeOf(Image)).call(this, options.id));
 
     _this.options = options;
     Primrose.Entity.registerEntity(_this);
@@ -78645,4 +78650,4 @@ function toString(digits) {
 })();
     // end D:\Documents\VR\Primrose\src\THREE\Vector3\prototype\toString.js
     ////////////////////////////////////////////////////////////////////////////////
-console.info("primrose v0.26.22. see https://www.primrosevr.com for more information.");
+console.info("primrose v0.26.23. see https://www.primrosevr.com for more information.");
