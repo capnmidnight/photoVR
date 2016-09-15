@@ -7,19 +7,25 @@
 
 gulp.task("format", [js.format]);
 
+gulp.task("copy", () => gulp.src(["../Primrose/Primrose.js", "../Primrose/Primrose.min.js"])
+  .pipe(gulp.dest("./")));
+
 gulp.task("default", [
+  "copy",
   js.default,
   html.default,
   css.default
 ]);
 
 gulp.task("debug", [
+  "copy",
   js.build,
   html.debug,
   css.build
 ]);
 
 gulp.task("release", [
+  "copy",
   js.build,
   html.release,
   css.build
