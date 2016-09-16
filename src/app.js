@@ -30,7 +30,8 @@ const app = new Primrose.BrowserEnvironment({
 
 
 // The hook on which we teleport the user back to center.
-const home = colored(box(0.1, 0.1, 0.1), 0xffff00, {
+const home = textured(box(0.1, 0.1, 0.1), "images/home.png", {
+  transparent: true,
   unshaded: true
 });
 home.name = "home";
@@ -94,7 +95,8 @@ app.addEventListener("ready", () => {
     ].map((img) => new Primrose.Controls.Image({
       id: img,
       radius: 2,
-      unshaded: true
+      unshaded: true,
+      pickable: true
     }).loadImages(
       ["images/" + img + ".jpg"],
       progress.onProgress.bind(progress))))
