@@ -13552,8 +13552,10 @@ WebVRStandardMonitor.prototype.exitPresent = function () {
 
 WebVRStandardMonitor.prototype.getEyeParameters = function (side) {
   if (side === "left") {
-    var width = screen.width,
-        height = screen.height,
+    var curLayer = this.getLayers()[0],
+        elem = curLayer && curLayer.source || document.body,
+        width = FullScreen.isActive ? screen.width : elem.clientWidth,
+        height = FullScreen.isActive ? screen.height : elem.clientHeight,
         aspect = width / height,
         vFOV = 25,
         hFOV = vFOV * aspect;
@@ -13574,7 +13576,7 @@ WebVRStandardMonitor.prototype.getEyeParameters = function (side) {
 })();
     // end D:\Documents\VR\webvr-standard-monitor\src\WebVRStandardMonitor.js
     ////////////////////////////////////////////////////////////////////////////////
-console.info("webvr-standard-monitor v1.0.6. see https://github.com/NotionTheory/webvr-standard-monitor for more information.");
+console.info("webvr-standard-monitor v1.0.7. see https://github.com/NotionTheory/webvr-standard-monitor for more information.");
 ////////////////////////////////////////////////////////////////////////////////
     // start D:\Documents\VR\webvr-bootstrapper\src\documentReady.js
 (function(){"use strict";
@@ -64359,7 +64361,7 @@ function material(textureDescription, options) {
   var materialDescription = "Primrose.material(" + textureDescription + ", " + options.color + ", " + options.unshaded + ", " + options.side + ", " + options.opacity + ", " + options.roughness + ", " + options.metalness + ", " + options.color + ", " + options.emissive + ", " + options.wireframe + ")";
   return cache(materialDescription, function () {
     var materialOptions = {
-      transparent: options.opacity < 1,
+      transparent: options.transparent || options.opacity < 1,
       opacity: options.opacity,
       side: options.side || THREE.FrontSide
     },
@@ -64376,6 +64378,13 @@ function material(textureDescription, options) {
         materialOptions.emissive = options.emissive;
       }
     }
+
+    if (options.texture instanceof THREE.CubeTexture) {
+      materialOptions.envMap = options.texture;
+    } else if (options.texture instanceof THREE.Texture) {
+      materialOptions.map = options.texture;
+    }
+
     var mat = new MaterialType(materialOptions);
     if (typeof options.color === "number" || options.color instanceof Number) {
       mat.color.set(options.color);
@@ -64680,8 +64689,6 @@ function sphere(r, slices, rings) {
     // start D:\Documents\VR\Primrose\src\textured.js
 (function(){"use strict";
 
-var textureCache = {};
-
 function textured(geometry, txt, options) {
   options = options || {};
   if (options.opacity === undefined) {
@@ -64706,61 +64713,10 @@ function textured(geometry, txt, options) {
   options.unshaded = !!options.unshaded;
   options.wireframe = !!options.wireframe;
 
-  var mat = null,
-      textureDescription;
-  if (txt instanceof THREE.Material) {
-    mat = txt;
-    txt = null;
-  } else {
-    var txtID = (txt.id || txt).toString();
-    textureDescription = "Primrose.textured(" + txtID + ", " + options.txtRepeatS + ", " + options.txtRepeatT + ")";
-    mat = material(textureDescription, options);
-  }
-
-  var obj = null;
-  if (geometry.type.indexOf("Geometry") > -1) {
-    obj = new THREE.Mesh(geometry, mat);
-  } else if (geometry instanceof THREE.Object3D) {
-    obj = geometry;
-    obj.material = mat;
-  }
-
-  if (txt) {
-    var setTexture = function setTexture(texture) {
-      if (options.txtRepeatS * options.txtRepeatT > 1) {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(options.txtRepeatS, options.txtRepeatT);
-      }
-
-      if (options.scaleTextureWidth || options.scaleTextureHeight) {
-        if (geometry.attributes && geometry.attributes.uv && geometry.attributes.uv.array) {
-          var uv = geometry.attributes.uv,
-              arr = uv.array,
-              i;
-          if (options.scaleTextureWidth) {
-            for (i = 0; i < arr.length; i += uv.itemSize) {
-              arr[i] *= options.scaleTextureWidth;
-            }
-          }
-          if (options.scaleTextureHeight) {
-            for (i = 1; i < arr.length; i += uv.itemSize) {
-              arr[i] = 1 - (1 - arr[i]) * options.scaleTextureHeight;
-            }
-          }
-        } else {
-          console.trace(geometry, options);
-        }
-      }
-
-      textureCache[textureDescription] = texture;
-      mat.map = texture;
-      mat.needsUpdate = true;
-      texture.needsUpdate = true;
-    };
-
-    if (textureCache[textureDescription]) {
-      setTexture(textureCache[textureDescription]);
-    } else if (txt instanceof Primrose.Surface) {
+  var txtID = (txt.id || txt).toString(),
+      textureDescription = "Primrose.textured(" + txtID + ", " + options.txtRepeatS + ", " + options.txtRepeatT + ")",
+      texture = cache(textureDescription, function () {
+    if (txt instanceof Primrose.Surface) {
       if (!options.scaleTextureWidth || !options.scaleTextureHeight) {
         obj.surface = txt;
         var imgWidth = txt.imageWidth,
@@ -64794,17 +64750,59 @@ function textured(geometry, txt, options) {
         }
       }
       txt._material = mat;
-      setTexture(txt.texture);
-    } else if (typeof txt === "string") {
-      Primrose.loadTexture(txt, options.progress).then(setTexture).catch(console.error.bind(console, "Error loading texture", txt));
+      return txt.texture;
+    } else if (typeof txt === "string" || txt instanceof Array || txt.length === 6) {
+      return Primrose.loadTexture(txt, options.resolve, options.progress, options.reject);
     } else if (txt instanceof Primrose.Text.Controls.TextBox) {
-      setTexture(txt.renderer.texture);
+      return txt.renderer.texture;
     } else if (txt instanceof HTMLCanvasElement || txt instanceof HTMLVideoElement) {
-      setTexture(new THREE.Texture(txt));
+      return new THREE.Texture(txt);
+    } else if (txt instanceof THREE.Texture) {
+      return txt;
     } else {
-      setTexture(txt);
+      throw new Error("Texture description couldn't be converted to a THREE.Texture object");
+    }
+  });
+
+  options.texture = texture;
+
+  var mat = material(textureDescription, options),
+      obj = null;
+  if (geometry.type.indexOf("Geometry") > -1) {
+    obj = new THREE.Mesh(geometry, mat);
+  } else if (geometry instanceof THREE.Mesh) {
+    obj = geometry;
+    obj.material = mat;
+    geometry = obj.geometry;
+  }
+
+  if (options.txtRepeatS * options.txtRepeatT > 1) {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(options.txtRepeatS, options.txtRepeatT);
+  }
+
+  if (options.scaleTextureWidth || options.scaleTextureHeight) {
+    if (geometry.attributes && geometry.attributes.uv && geometry.attributes.uv.array) {
+      var uv = geometry.attributes.uv,
+          arr = uv.array,
+          i;
+      if (options.scaleTextureWidth) {
+        for (i = 0; i < arr.length; i += uv.itemSize) {
+          arr[i] *= options.scaleTextureWidth;
+        }
+      }
+      if (options.scaleTextureHeight) {
+        for (i = 1; i < arr.length; i += uv.itemSize) {
+          arr[i] = 1 - (1 - arr[i]) * options.scaleTextureHeight;
+        }
+      }
+    } else {
+      console.trace(geometry, options);
     }
   }
+
+  mat.needsUpdate = true;
+  texture.needsUpdate = true;
 
   return obj;
 }
@@ -65580,8 +65578,16 @@ var BrowserEnvironment = function (_Primrose$AbstractEve) {
 
     _this.camera = new THREE.PerspectiveCamera(75, 1, _this.options.nearPlane, _this.options.nearPlane + _this.options.drawDistance);
     if (_this.options.skyTexture !== undefined) {
-      var skyFunc = typeof _this.options.skyTexture === "number" ? colored : textured;
-      _this.sky = skyFunc(shell(_this.options.drawDistance * 0.9, 18, 9, Math.PI * 2, Math.PI), _this.options.skyTexture, {
+      var skyFunc = typeof _this.options.skyTexture === "number" ? colored : textured,
+          skyDim = _this.options.drawDistance * 0.9,
+          skyGeom = null;
+      if (typeof _this.options.skyTexture === "string") {
+        skyGeom = sphere(skyDim, 18, 9);
+      } else {
+        skyGeom = box(skyDim, skyDim, skyDim);
+      }
+      _this.sky = skyFunc(skyGeom, _this.options.skyTexture, {
+        side: THREE.BackSide,
         unshaded: true
       });
       _this.sky.name = "Sky";
@@ -66947,15 +66953,20 @@ for (var key in Keys) {
     // start D:\Documents\VR\Primrose\src\Primrose\loadTexture.js
 (function(){"use strict";
 
-var textureLoader = new THREE.TextureLoader();
-
-function loadTexture(url, progress) {
+function loadTexture(url, resolve, progress, reject) {
   progress = progress || function () {};
+  var textureLoader = null,
+      txtName = null;
+  if (typeof url === "string") {
+    txtName = url;
+    textureLoader = new THREE.TextureLoader();
+  } else if (url instanceof Array && url.length === 6) {
+    txtName = url.join(",");
+    textureLoader = new THREE.CubeTextureLoader();
+  }
   textureLoader.setCrossOrigin(THREE.ImageUtils.crossOrigin);
-  return cache("Image(" + url + ")", function () {
-    return new Promise(function (resolve, reject) {
-      return textureLoader.load(url, resolve, progress, reject);
-    });
+  return cache("Texture(" + txtName + ")", function () {
+    return textureLoader.load(url, resolve, progress, reject);
   });
 }
     if(typeof window !== "undefined") window.Primrose.loadTexture = loadTexture;
@@ -71435,22 +71446,25 @@ var Image = function (_Primrose$Entity) {
       options.geometry = quad(0.5, 0.5);
     }
 
-    if (!options.id) {
-      options.id = "Primrose.Controls.Image[" + COUNTER++ + "]";
-    }
+    options = patch(options, {
+      id: "Primrose.Controls.Image[" + COUNTER++ + "]"
+    });
 
     var _this = _possibleConstructorReturn(this, (Image.__proto__ || Object.getPrototypeOf(Image)).call(this, options.id));
 
     _this.options = options;
+
     Primrose.Entity.registerEntity(_this);
 
     ////////////////////////////////////////////////////////////////////////
     // initialization
     ///////////////////////////////////////////////////////////////////////
-
-    _this._images = [];
+    _this._canvases = [];
+    _this._contexts = [];
+    _this._elements = [];
+    _this._meshes = [];
+    _this._textures = [];
     _this._currentImageIndex = 0;
-    _this.meshes = null;
     _this.isVideo = false;
     return _this;
   }
@@ -71460,15 +71474,12 @@ var Image = function (_Primrose$Entity) {
     value: function addToBrowserEnvironment(env, scene) {
       var _this2 = this;
 
-      this.meshes = this._images.map(function (txt) {
-        return textured(_this2.options.geometry, txt, _this2.options);
-      });
-      this.meshes.forEach(function (mesh, i) {
+      this._meshes.forEach(function (mesh, i) {
         scene.add(mesh);
         mesh.name = _this2.id + "-" + i;
         if (i > 0) {
           mesh.visible = false;
-        } else {
+        } else if (_this2.options.pickable) {
           env.registerPickableObject(mesh);
         }
       });
@@ -71479,8 +71490,10 @@ var Image = function (_Primrose$Entity) {
       var _this3 = this;
 
       return Promise.all(images.map(function (src, i) {
-        return Primrose.loadTexture(src, progress).then(function (txt) {
-          return _this3._images[i] = txt;
+        return new Promise(function (resolve, reject) {
+          var txt = Primrose.loadTexture(src, resolve, progress, reject);
+          _this3._textures[i] = txt;
+          _this3._meshes[i] = textured(_this3.options.geometry, txt, _this3.options);
         });
       })).then(function () {
         return _this3.isVideo = false;
@@ -71493,23 +71506,86 @@ var Image = function (_Primrose$Entity) {
     value: function loadVideos(videos, progress) {
       var _this4 = this;
 
-      return Promise.all(videos.map(function (src, i) {
+      return Promise.all(videos.map(function (spec, i) {
         return new Promise(function (resolve, reject) {
-          var video = document.createElement("video"),
-              source = document.createElement("source");
-          video.muted = true;
-          video.preload = "auto";
-          video.autoplay = true;
-          video.loop = true;
-          video.oncanplay = function () {
-            _this4._images[i] = video;
-            console.log(video.videoWidth, video.videoHeight);
+          var video = null;
+          if (typeof spec === "string") {
+            video = document.querySelector("video[src='" + spec + "']") || document.createElement("video");
+            video.src = spec;
+          } else if (spec instanceof HTMLVideoElement) {
+            video = spec;
+          }
+          video.oncanplaythrough = function () {
+            var width = video.videoWidth,
+                height = video.videoHeight,
+                p2Width = Math.pow(2, Math.ceil(Math.log2(width))),
+                p2Height = Math.pow(2, Math.ceil(Math.log2(height)));
+
+            if (width === p2Width && height === p2Height) {
+              _this4._meshes[i] = textured(_this4.options.geometry, elem, _this4.options);
+            } else {
+              _this4._elements[i] = video;
+
+              _this4._canvases[i] = document.createElement("canvas");
+              _this4._canvases[i].id = (video.id || _this4.id) + "-canvas";
+              _this4._canvases[i].width = p2Width;
+              _this4._canvases[i].height = p2Height;
+
+              _this4._contexts[i] = _this4._canvases[i].getContext("2d");
+
+              _this4._meshes[i] = textured(_this4.options.geometry, _this4._canvases[i], _this4.options);
+
+              if (p2Width !== width || p2Height !== height) {
+                var maxU = width / p2Width,
+                    maxV = height / p2Height,
+                    oldMaxU = _this4.options.scaleTextureWidth || 1,
+                    oldMaxV = _this4.options.scaleTextureHeight || 1,
+                    pU = maxU / oldMaxU,
+                    pV = maxV / oldMaxV;
+
+                _this4.options.scaleTextureWidth = maxU;
+                _this4.options.scaleTextureHeight = maxV;
+                var geometry = _this4._meshes[i].geometry,
+                    attrs = geometry.attributes || geometry._bufferGeometry && geometry._bufferGeometry.attributes;
+                if (attrs && attrs.uv && attrs.uv.array) {
+                  var uv = attrs.uv,
+                      arr = uv.array;
+                  for (var j = 0; j < arr.length; j += uv.itemSize) {
+                    arr[j] *= pU;
+                  }
+                  for (var _j = 1; _j < arr.length; _j += uv.itemSize) {
+                    arr[_j] = 1 - (1 - arr[_j]) * pV;
+                  }
+                } else if (geometry.faceVertexUvs) {
+                  var faces = geometry.faceVertexUvs;
+                  for (var _i = 0; _i < faces.length; ++_i) {
+                    var face = faces[_i];
+                    for (var _j2 = 0; _j2 < face.length; ++_j2) {
+                      var uvs = face[_j2];
+                      for (var k = 0; k < uvs.length; ++k) {
+                        var _uv = uvs[k];
+                        _uv.x *= pU;
+                        _uv.y = 1 - (1 - _uv.y) * pV;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            _this4._textures[i] = _this4._meshes[i].material.map;
+            video.oncanplaythrough = null;
             resolve();
           };
           video.onprogress = progress;
           video.onerror = reject;
-          video.src = src;
-          document.body.insertBefore(video, document.body.children[0]);
+          video.muted = true;
+          video.preload = "auto";
+          video.autoplay = true;
+          video.loop = true;
+          if (!video.parentElement) {
+            document.body.insertBefore(video, document.body.children[0]);
+          }
         });
       })).then(function () {
         return _this4.isVideo = true;
@@ -71520,10 +71596,10 @@ var Image = function (_Primrose$Entity) {
   }, {
     key: "eyeBlank",
     value: function eyeBlank(eye) {
-      if (this.meshes) {
-        this._currentImageIndex = eye % this.meshes.length;
-        for (var i = 0; i < this.meshes.length; ++i) {
-          var m = this.meshes[i];
+      if (this._meshes) {
+        this._currentImageIndex = eye % this._meshes.length;
+        for (var i = 0; i < this._meshes.length; ++i) {
+          var m = this._meshes[i];
           m.visible = i === this._currentImageIndex;
           if (i > 0) {
             m.position.copy(this.position);
@@ -71536,26 +71612,29 @@ var Image = function (_Primrose$Entity) {
   }, {
     key: "update",
     value: function update() {
-      if (this.meshes && this.isVideo) {
-        for (var i = 0; i < this.meshes.length; ++i) {
-          this.meshes[i].material.map.needsUpdate = true;
+      if (this.isVideo) {
+        for (var i = 0; i < this._textures.length; ++i) {
+          if (i < this._contexts.length) {
+            this._contexts[i].drawImage(this._elements[i], 0, 0);
+          }
+          this._textures[i].needsUpdate = true;
         }
       }
     }
   }, {
     key: "position",
     get: function get() {
-      return this.meshes[0].position;
+      return this._meshes[0].position;
     }
   }, {
     key: "quaternion",
     get: function get() {
-      return this.meshes[0].quaternion;
+      return this._meshes[0].quaternion;
     }
   }, {
     key: "scale",
     get: function get() {
-      return this.meshes[0].scale;
+      return this._meshes[0].scale;
     }
   }]);
 
@@ -73387,8 +73466,6 @@ var VR = function (_Primrose$PoseInputPr) {
     _this.lastStageWidth = null;
     _this.lastStageDepth = null;
     _this.isStereo = false;
-
-    console.info("Checking for displays...");
     _this.ready = navigator.getVRDisplays().then(function (displays) {
       // We skip the WebVR-Polyfill's Mouse and Keyboard display because it does not
       // play well with our interaction model.
