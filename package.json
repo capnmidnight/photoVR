@@ -17,7 +17,7 @@
     "primrose": "^0.26.16"
   },
   "devDependencies": {
-    "notiontheory-basic-build": "^2.3.11"
+    "notiontheory-basic-build": "^2.6.0"
   },
   "bugs": {
     "url": "https://github.com/NotionTheory/photoVR/issues"
