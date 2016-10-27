@@ -2,13 +2,16 @@
   pkg = require("./package.json"),
   build = require("notiontheory-basic-build"),
   nt = build.setup(gulp, pkg),
-  js = nt.js(pkg.name + "Lib", "src"),
+  pre = nt.js("pre", "pre"),
+  js = nt.js(pkg.name + "Lib", "src", ["format"]),
   tot = nt.cat(pkg.name, [
-    "node_modules/primrose/Primrose.js",
+    "../primrose/Primrose.js",
     pkg.name + "Lib.js"
   ], [js]),
-  html = nt.html(pkg.name, ["!node_modules/**/*", "**/*.pug"]),
-  css = nt.css(pkg.name, ["!node_modules/**/*", "**/*.styl"]);
+  html = nt.html(pkg.name, ["*.pug"]),
+  css = nt.css(pkg.name, ["*.styl"]);
+
+gulp.task("format", [js.format]);
 
 gulp.task("default", [
   pre.default,
@@ -37,3 +40,5 @@ gulp.task("release", [
   html.release,
   css.release
 ]);
+
+gulp.task("kablamo", build.exec("npm update && gulp bump && gulp yolo"));
