@@ -1,31 +1,39 @@
 ﻿var gulp = require("gulp"),
   pkg = require("./package.json"),
-  nt = require("notiontheory-basic-build").setup(gulp, pkg, true),
-  js = nt.js(pkg.name, "src", ["format"]),
+  build = require("notiontheory-basic-build"),
+  nt = build.setup(gulp, pkg),
+  js = nt.js(pkg.name + "Lib", "src"),
+  tot = nt.cat(pkg.name, [
+    "node_modules/primrose/Primrose.js",
+    pkg.name + "Lib.js"
+  ], [js]),
   html = nt.html(pkg.name, ["!node_modules/**/*", "**/*.pug"]),
   css = nt.css(pkg.name, ["!node_modules/**/*", "**/*.styl"]);
 
-gulp.task("format", [js.format]);
-
-gulp.task("copy", () => gulp.src(["node_modules/primrose/Primrose.js", "node_modules/primrose/Primrose.min.js"])
-  .pipe(gulp.dest("./")));
-
 gulp.task("default", [
+  pre.default,
   js.default,
   html.default,
   css.default
 ]);
 
 gulp.task("debug", [
-  "copy",
-  js.build,
+  pre.debug,
+  tot.debug,
   html.debug,
-  css.build
+  css.debug
+]);
+
+gulp.task("test", [
+  pre.release,
+  tot.release,
+  html.test,
+  css.release
 ]);
 
 gulp.task("release", [
-  "copy",
-  js.build,
+  pre.release,
+  tot.release,
   html.release,
-  css.build
+  css.release
 ]);
