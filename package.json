@@ -1,7 +1,7 @@
 {
   "name": "photovr",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "A simple, 360 degree photo viewer.",
   "GoogleWebVROriginTrialToken": "<check back later>",
   "main": "index.js",
