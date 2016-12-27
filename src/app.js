@@ -1,7 +1,3 @@
-// Polyfill the standard, flat, unmoving monitor through the WebVR API to give
-// us a single path of code through which to manage full-screen state.
-WebVRStandardMonitor();
-
 // The distance from the starting point at which the photospheres will be placed.
 const POSITIONING_RADIUS = 10;
 
