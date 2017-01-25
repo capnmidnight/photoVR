@@ -6,7 +6,7 @@
   "GoogleWebVROriginTrialToken": "<check back later>",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node node_modules/notion-node/default --path=.. --url=photoVR/ --port=9001"
   },
   "repository": {
     "type": "git",
@@ -15,10 +15,11 @@
   "author": "Sean T. McBeth",
   "license": "GPL-3.0",
   "dependencies": {
-    "primrose": "^0.26.16"
+    "primrose": "^0.31.0"
   },
   "devDependencies": {
-    "notiontheory-basic-build": "^2.6.0"
+    "notion-node": "^0.2.0",
+    "notiontheory-basic-build": "^5.0.0"
   },
   "bugs": {
     "url": "https://github.com/NotionTheory/photoVR/issues"

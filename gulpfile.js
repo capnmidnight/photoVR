@@ -2,43 +2,57 @@
   pkg = require("./package.json"),
   build = require("notiontheory-basic-build"),
   nt = build.setup(gulp, pkg),
-  pre = nt.js("pre", "pre"),
-  js = nt.js(pkg.name + "Lib", "src", ["format"]),
-  tot = nt.cat(pkg.name, [
-    "../primrose/Primrose.js",
-    pkg.name + "Lib.js"
-  ], [js]),
+
+  pliny = require("pliny"),
+
+  js = nt.js(pkg.name, "src", {
+    advertise: false,
+    moduleName: "app",
+    fileName: pkg.name + ".js",
+    format: "iife",
+    dependencies: ["format"],
+    post: (inFile, cb) => pliny.carve(inFile, inFile, null, cb)
+  }),
+
+  min = nt.min(pkg.name, [pkg.name + ".js"], [js.release]),
+
+  clean = nt.clean("legend3d", [
+    "style.css",
+    pkg.name + ".js",
+    pkg.name + "Lib*.js"
+  ], [min.release]),
+
   html = nt.html(pkg.name, ["*.pug"]),
+
   css = nt.css(pkg.name, ["*.styl"]);
 
-gulp.task("format", [js.format]);
+gulp.task("copyPreloader", () => gulp.src(["node_modules/primrose/preloader*.js"])
+  .pipe(gulp.dest("./")));
 
-gulp.task("default", [
-  pre.default,
-  js.default,
-  html.default,
-  css.default
-]);
+gulp.task("format", ["copyPreloader", js.format]);
+
+gulp.task("js", [js.default]);
+gulp.task("html", [html.default]);
+gulp.task("css", [css.default]);
+
+gulp.task("default", [ "js", "html", "css" ]);
 
 gulp.task("debug", [
-  pre.debug,
-  tot.debug,
+  js.debug,
   html.debug,
   css.debug
 ]);
 
 gulp.task("test", [
-  pre.release,
-  tot.release,
+  js.release,
   html.test,
   css.release
 ]);
 
 gulp.task("release", [
-  pre.release,
-  tot.release,
+  min.release,
   html.release,
   css.release
 ]);
 
-gulp.task("kablamo", build.exec("npm update && gulp bump && gulp yolo"));
+gulp.task("kablamo", build.exec("gulp bump && gulp yolo && gulp trololo"));
